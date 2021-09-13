@@ -1,0 +1,207 @@
+---
+title: 'Final Project: NYC Airbnb Data Analysis'
+author: "David Brehm"
+date: '2021-03-04'
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(grid)
+library(gridExtra)
+library(caret)
+library(car)
+library(leaflet)
+
+set.seed(123)
+```
+
+```{r, echo = FALSE}
+setwd("D:/School/520/Final")  # Set working directory 
+data <- read.csv('AB_NYC_2019.csv')
+```
+
+
+## $\underline{Data\space Cleaning}$
+
+### Observe Missing Values and Categorical Variables
+```{r}
+colSums(is.na(data))
+
+data %>% group_by(neighbourhood) %>% tally(sort=TRUE)
+data %>% group_by(neighbourhood_group) %>% tally(sort=TRUE)
+data %>% group_by(room_type) %>% tally(sort=TRUE)
+```
+
+### Convert Columns and Replace Missing Values
+
+```{r}
+review_date <- ymd(data$last_review)  # Convert last_review to year-month-day.
+today <- ymd(today())  # Date today.
+data$days_since_last_review <- sapply(1:48895, function(i) difftime(today[1], review_date[i]))  # Convert last review date to days since last review.
+
+data$reviews_per_month[is.na(data$reviews_per_month)] <- 0  # Replace NA review_per_month with 0.
+data$days_since_last_review[is.na(data$days_since_last_review)] <- 
+  max(data$days_since_last_review[which(!is.na(data$days_since_last_review))]) + 1  # Replace NA days since last review with the max plus 1.
+
+
+# Convert categorical variables to factor.
+data$neighbourhood <- as.factor(data$neighbourhood)
+data$neighbourhood_group <- as.factor(data$neighbourhood_group)
+data$room_type<- as.factor(data$room_type)
+
+fdata <- subset(data, select = -c(id, name, host_id, host_name, neighbourhood, last_review))  # Columns not being used in the model.
+```
+
+## $\underline{Distributions}$
+
+```{r}
+# Histograms
+p1 <- qplot(price, data=fdata) + xlab("Price ($)") + ylab("Count") + ggtitle("Price")
+p2 <- qplot(minimum_nights, data=fdata) + xlab("Minimum Nights") + ylab("Count") + ggtitle("Minimum Nights")
+p3 <- qplot(number_of_reviews, data=fdata) + xlab("Number of Reviews") + ylab("Count") + ggtitle("Number of Reviews")
+p4 <- qplot(reviews_per_month, data=fdata) + xlab("Reviews Per Month") + ylab("Count") + ggtitle("Reviews Per Month")
+p5 <- qplot(calculated_host_listings_count, data=fdata) + xlab("Number of Host Listings") + ylab("Count") + ggtitle("Number of Host Listings")
+p6 <- qplot(availability_365, data=fdata) + xlab("Days Available") + ylab("Count") + ggtitle("Days Available")
+p7 <- qplot(days_since_last_review, data=fdata) + xlab("Days Since Last Review") + ylab("Count") + ggtitle("Days Since Last Review")
+
+grid.arrange(p1,p2,p3,p4,p5,p6,p7, nrow=3)
+
+ggplot(data, aes(x=neighbourhood_group, fill = room_type)) + geom_bar(position="dodge") +
+  labs(x="Neighborhood Group",fill="Room Type", title="Listings by Neighborhood Group and Room Type")
+
+ggplot(data, aes(x=neighbourhood_group, y=price,fill = room_type)) + 
+  geom_bar(stat="summary",fun="mean",position="dodge") + 
+  labs(x="Neighborhood Group",y="Average Price ($)", fill="Room Type", title="Average Price by Neighborhood Group and Room Type")
+```
+
+## $\underline{Predicting\space Price}$
+```{r}
+modData = fdata[c(5,1,4,6:11)]
+mod <- lm(price ~ . , data = modData)
+summary(mod)
+```
+
+### MSE and RMSE of the Model
+```{r}
+paste("MSE:", mean(mod$residuals^2), sep=" ")  # MSE
+paste("RMSE:", sqrt(mean(mod$residuals^2)), sep=" ")  # RMSE
+```
+
+
+### Standardized Residuals
+```{r}
+modData$stdRes <- rstandard(mod)  # Standardized residuals
+modData$studRes <- rstudent(mod)  # Studentized residuals
+modData$largeResid <-  modData$stdRes > 2 | modData$stdRes < -2
+sum(modData$largeResid)
+
+```
+### Leverage, Cooks Distance, and Covariance
+```{r}
+modData$lev <- hatvalues(mod)
+modData$cooksDist <- cooks.distance(mod)
+modData$covRatio <- covratio(mod)
+modData1 <- modData[modData$largeResid, c("lev","cooksDist","covRatio")]
+summary(modData1)
+```
+None of these values have a Cooks Distance greater than 1, so none of these cases have an undue influence on the model.
+
+
+### Durbin Watson Test
+```{r}
+durbinWatsonTest(mod)
+```
+The Durbin Watson test returns a value between 0 and 4. A result closer to 0 indicates a positive autocorrelation while a result closer to 4 indicates a negative autocorrelation. The closer to 2 the better. The test for this model returns 1.848, which indicates minimal autocorrelation.
+
+
+### Plotting Predicted vs Actual Price
+```{r}
+predicted <- predict(mod,modData[c(2:9)])
+prices <- cbind.data.frame(predicted, modData$price)
+ggplot(data = prices, aes(x=predicted,y=modData$price)) + geom_point(alpha = 0.01, colour="purple") + geom_abline(linetype=2) +
+  ylim(0,1000) + xlab('Predicted Price') + ylab('Actual Price')
+```
+
+
+
+### Correlation
+```{r}
+cor(modData[,4:9])
+
+```
+
+
+### Recursive Feature Elimination
+```{r}
+sample <- sample_n(modData, 3000)
+control <- rfeControl(functions=rfFuncs, method="cv", number=3, repeats=2)
+result <- rfe(sample[,2:9], sample[,1], sizes = c(2:9), rfeControl = control)
+result
+predictors(result)
+plot(result, type=c("g","o"))
+```
+
+
+## $\underline{Clustering\space and\space Map\space Plots}$
+### Elbow method to choose a value for k
+```{r}
+dataCoord <- data[c('longitude','latitude')]
+cluster2 <- kmeans(dataCoord,2)
+cluster3 <- kmeans(dataCoord,3)
+cluster4 <- kmeans(dataCoord,4)
+cluster5 <- kmeans(dataCoord,5)
+cluster6 <- kmeans(dataCoord,6)
+cluster7 <- kmeans(dataCoord,7)
+cluster8 <- kmeans(dataCoord,8)
+cluster9 <- kmeans(dataCoord,9)
+cluster10 <- kmeans(dataCoord,10)
+cluster11 <- kmeans(dataCoord,11)
+cluster12 <- kmeans(dataCoord,12)
+data$k2 <- as.factor(cluster2$cluster)
+data$k3 <- as.factor(cluster3$cluster)
+data$k4 <- as.factor(cluster4$cluster)
+data$k5 <- as.factor(cluster5$cluster)
+data$k6 <- as.factor(cluster6$cluster)
+data$k7 <- as.factor(cluster7$cluster)
+data$k8 <- as.factor(cluster8$cluster)
+data$k9 <- as.factor(cluster9$cluster)
+data$k10 <- as.factor(cluster10$cluster)
+data$k11 <- as.factor(cluster11$cluster)
+data$k12 <- as.factor(cluster12$cluster)
+
+k <- 2:12
+wsslist <- c(cluster2$tot.withinss, cluster3$tot.withinss, cluster4$tot.withinss, cluster5$tot.withinss, cluster6$tot.withinss, 
+                 cluster7$tot.withinss, cluster8$tot.withinss, cluster9$tot.withinss,cluster10$tot.withinss,
+                 cluster11$tot.withinss,cluster12$tot.withinss)
+plot(k, wsslist, type="b", pch=19, frame=FALSE, xlab="Number of clusters", ylab="Total Within-Clusters Sum of Squares")
+```
+
+### KMeans Clustering with K=5
+```{r}
+pal <- colorFactor(palette = c('red', 'green', 'blue', 'orange', 'purple'), domain = data$k5)
+plot1 <- leaflet(data = data) %>% addTiles() %>% addCircleMarkers(radius = 0.5, color = ~pal(k5))
+plot1
+```
+
+### Listings by Neighborhood Group
+```{r}
+pal <- colorFactor(palette = c('green', 'blue', 'red', 'orange', 'purple'), domain = data$neighbourhood_group)
+plot2 <- leaflet(data = data) %>% addTiles() %>% addCircleMarkers(radius = 0.5, color = ~pal(neighbourhood_group))
+plot2
+```
+
+### Listings by Price
+```{r}
+priceBin <- c(0, 100, 200, 300, 400, 500, 1000, 2500, 10000)
+palGYR <- colorBin(palette = c("#A50026","#D73027","#F46D43","#FDAE61","#A6D96A","#66BD63","#1A9850","#006837"), bins=priceBin, reverse = TRUE)
+plot3 <- leaflet(data = fdata) %>% addTiles() %>% addCircleMarkers(radius = 0.5, color = ~palGYR(price)) %>% addLegend("topleft",pal = palGYR, values = ~price, opacity = 1)
+plot3
+```
+
+
