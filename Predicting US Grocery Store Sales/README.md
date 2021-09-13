@@ -15,6 +15,7 @@
 ## Introduction
 The recent pandemic has had an effect on many parts of our country, with the economy being one of the clearer ones. The shutdowns caused large spikes in many of our economic indicators that get tracked. One of these indicators that would have been very visible on a daily basis is grocery store sales. It was a prominent story at the beginning of the pandemic with how certain foods or materials were constantly out of stock. Some of this was likely due to production being shut down, but a lot of it was also sales increasing. With these fluctuations, I thought it would be an interesting problem to investigate which of the other main economic indicators track with the sales and if they could be used to predict future sales.
 
+-----------
 ## Process
 The data gathered was in the format of individual indicators. Attempting to keep these in the same date format made it simpler to combine. From the sources and structure of the data basically being just the date and one variable column, there wasn’t much cleaning required. With all of the date formats being YYYY-MM-DD, it was very easy to merge as well. After compiling all of the different data sources, features could be eliminated through the process of training the model through Recursive Feature Elimination. Once the model was trained, grocery store sales numbers could be predicted.
 
