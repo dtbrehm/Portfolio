@@ -1,0 +1,144 @@
+---
+title: "Exercise 12: Housing Data"
+author: "David Brehm"
+date: '2021-01-31'
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, echo = FALSE, warning = FALSE, message = FALSE)
+library(data.table)
+library(readxl)
+library(QuantPsyc)
+library(car)
+library(ggplot2)
+```
+
+```{r}
+setwd("D:/School/520/dsc520/data")  # Set working directory 
+data <- read_excel('week-6-housing.xlsx')
+```
+
+## a. Explain why you chose to remove data points from your ‘clean’ dataset.
+
+```{r}
+data$bath <-data$bath_full_count + data$bath_half_count*0.5 + data$bath_3qtr_count*0.75
+data$sale_price <- data$`Sale Price`
+data <- data[, names(data) %in% c("sale_price","building_grade","square_feet_total_living","bedrooms","sq_ft_lot","bath")]
+```
+
+I chose to keep Sale Price, Building Grade, Square Feet Total Living, Bedrooms, Square Feet Lot, and Bathrooms. "Bathrooms" is combined full, half, and three-quarters bathroom columns. Most of the other columns should not have an effect on our independent variable Sale Price. Property Type and Postal Location only had one value as well. 
+
+## b. Create two models. One that will contain the variables Sale Price and Square Foot of Lot (same variables used from previous assignment on simple regression) and one that will contain Sale Price and several additional predictors of your choice.
+
+```{r echo=TRUE}
+mod1 <- lm(sale_price ~ sq_ft_lot, data=data)
+mod2 <- lm(sale_price ~ building_grade + square_feet_total_living + bedrooms + sq_ft_lot + bath, data=data)
+```
+
+
+## c. Execute a summary() function on two variables defined in the previous step to compare the model results.
+
+```{r}
+summary(mod1)
+summary(mod2)
+```
+Model Variables           |R2                 |Adjusted R2
+:-------------------------|:------------------|:----------------------|
+Square Foot of Lot        |0.01435            |0.01428          
+Multiple                  |0.2148             |0.2145 
+
+## d. What are the standardized betas for each parameter and what do the values indicate?
+
+```{r}
+lm.beta(mod2)
+```
+
+Standardized beta values are measured in standard deviation units, so these values tell us the number of standard deviations that the outcome will change after changing a predictor by one standard deviation.
+
+## e. Calculate the confidence intervals for the parameters in your model and explain what the results indicate.
+
+```{r}
+confint(mod2)
+```
+
+These confidence intervals indicate that there is a 95% probability that the true values of the coefficient are within that interval.
+
+## f. Assess the improvement of the new model compared to your original model (simple regression model) by testing whether this change is significant by performing an analysis of variance.
+
+```{r}
+anova(mod1, mod2)
+```
+P-value of less than 0.05 indicates an improvement between models and we can reject the null hypothesis that the one-predictor model is as good as the multiple-predictor model.
+
+## g. Perform casewise diagnostics to identify outliers and/or influential cases, storing each function's output in a dataframe assigned to a unique variable name.
+
+```{r}
+outM1 <- outlierTest(mod1)
+outM2 <- outlierTest(mod2)
+outM1
+outM2
+```
+
+## h. Calculate the standardized residuals using the appropriate command, specifying those that are +-2, storing the results of large residuals in a variable you create.
+
+```{r echo=TRUE}
+data$stdRes <- rstandard(mod2)
+data$studRes <- rstudent(mod2)
+data$largeResid <-  data$stdRes > 2 | data$stdRes < -2
+```
+
+## i. Use the appropriate function to show the sum of large residuals.
+
+```{r echo=TRUE}
+sum(data$largeResid)
+```
+## j. Which specific variables have large residuals (only cases that evaluate as TRUE)?
+
+```{r}
+subset(data, data$largeResid == TRUE)
+```
+
+## k. Investigate further by calculating the leverage, cooks distance, and covariance rations. Comment on all cases that are problematics.
+
+```{r}
+data$lev <- hatvalues(mod2)
+data$cooksDist <- cooks.distance(mod2)
+data$covRatio <- covratio(mod2)
+data1 <- data[data$largeResid, c("lev","cooksDist","covRatio")]
+summary(data1)
+```
+None of these values have a Cooks Distance greater than 1, so none of these cases have an undue influence on the model.
+
+
+## l. Perform the necessary calculations to assess the assumption of independence and state if the condition is met or not.
+
+```{r}
+durbinWatsonTest(mod2)
+```
+The Durbin Watson test returns a value between 0 and 4. A result closer to 0 indicates a positive autocorrelation while a result closer to 4 indicates a negative autocorrelation. The closer to 2 the better. The test for this model returns 0.518, which is outside of the conservative range of 1 to 3 and therefore does not indicate independence. 
+
+## m. Perform the necessary calculations to assess the assumption of no multicollinearity and state if the condition is met or not.
+
+```{r}
+vif(mod2)
+1/vif(mod2)  # Tolerance.
+mean(vif(mod2))
+```
+The largest VIF is well below 10, there is no tolerance below 0.2, and the average VIF is not substantially greater than one. The condition of no multicollinearity is met. 
+
+
+## n. Visually check the assumptions related to the residuals using the plot() and hist() functions. Summarize what each graph is informing you of and if any anomalies are present.
+
+```{r}
+hist(data$stdRes,main=NA, xlab="Standardized Residuals",col="red",freq=FALSE)
+qplot(sample = data$studRes, stat="qq",  main="Q-Q Plot") + labs(x =
+"Theoretical Values", y = "Observed Values")
+```
+
+The Q-Q plot is not normal, it appears almost bimodal. The residuals are closely distributed around 0 though. 
+
+## o. Overall, is this regression model unbiased? If an unbiased regression model, what does this tell us about the sample vs. the entire population model?
+
+From the residual and VIF analysis, the model does not appear biased. This tells us that on average the sample regression model is the same as the entire population model. It is not a guarantee though.
