@@ -35,4 +35,9 @@ My name is David Brehm. I am a current student at Bellevue University where I am
 
 ### Contact
 
-Please [email](mailto:d.brehm@gmail.com) me any inquiries.
+<a href="mailto:d.brehm@gmail.com">
+  <img align="left" alt="David's Email" width="22px" src="https://cdn.worldvectorlogo.com/logos/gmail-icon.svg" />
+</a>
+<a href="https://www.linkedin.com/in/dbrehm/">
+  <img align="left" alt="David's LinkedIn" width="22px" src="https://cdn.worldvectorlogo.com/logos/linkedin-icon-2.svg" />
+</a>
