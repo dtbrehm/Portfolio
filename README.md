@@ -18,5 +18,6 @@ David Brehm
   * Using a player's NBA statistics to predict their position.
 * **Predicting US Grocery Store Sales**
   * Using various US economic indicators to predict US national grocery store sales.
-* TBD
+* **Forecasting Future Home Prices**
+  * Using Zillow historical home values by zip code to forecast future home values.
 * TBD
