@@ -1,5 +1,7 @@
 # Portfolio
-David Brehm
+
+### About Me
+My name is David Brehm. I am a current student at Bellevue University where I am pursuing a Master's degree in Data Science.
 
 ### Projects
 * **Airplane Safety Dashboard** 
@@ -21,3 +23,8 @@ David Brehm
 * **Forecasting Future Home Prices**
   * Using Zillow historical home values by zip code to forecast future home values.
 * TBD
+
+
+### Contact Me
+
+Please [email](mailto:d.brehm@gmail.com) me any inquiries.
