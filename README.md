@@ -30,7 +30,8 @@ My name is David Brehm. I am a current student at Bellevue University where I am
   * Using various US economic indicators to predict US national grocery store sales.
 * **Forecasting Future Home Prices**
   * Using Zillow historical home values by zip code to forecast future home values.
-* TBD
+* **Classifying Movie Reviews through Sentiment Analysis**
+  * Building a classification model to categorize IMDB reviews as positive or negative.
 
 
 ### Contact
