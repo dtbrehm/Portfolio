@@ -1,5 +1,3 @@
-# Portfolio
-
 ### About Me
 My name is David Brehm. I am a current student at Bellevue University where I am pursuing a Master's degree in Data Science. My passion for data science originated through following professional sports and observing the amazing growth there has been in these leagues regarding advanced data over the past decade or so. Professionally, my experience thus far has been focused on doing programming and data analysis for government contractors. I aim to transition these skills learned both professionally and educationally into a full-time data science role.
 
