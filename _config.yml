@@ -1,4 +1,5 @@
 theme: jekyll-theme-slate
 title: "David Brehm's Portfolio"
+description: "David Brehm"
 github:
   is_project_page: false
